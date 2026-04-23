@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "465331509260",
+    "project_id": "messagemonitor-ad073",
+    "storage_bucket": "messagemonitor-ad073.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:465331509260:android:758427f6d5fdcd1cb57629",
+        "android_client_info": {
+          "package_name": "com.termux.yourapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAT0X5sPd6wYHSnXkCFcdlDiYTjGJsrEao"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
