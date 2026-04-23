@@ -1,16 +1,16 @@
-name: Build Aegis APK
+name: Build APK
 on: [push]
 jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - name: Java 17 Setup
+      - name: Java Setup
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Compiling APK
+      - name: Build
         run: |
           sudo apt update
           sudo apt install -y git zip unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo6 cmake libffi-dev libssl-dev
@@ -19,8 +19,8 @@ jobs:
           buildozer android debug
         env:
           ACCEPT_SDK_LICENSE: "True"
-      - name: Uploading APK
+      - name: Save
         uses: actions/upload-artifact@v4
         with:
-          name: Aegis-V3-Calculator
+          name: Aegis-V4-APK
           path: bin/*.apk
